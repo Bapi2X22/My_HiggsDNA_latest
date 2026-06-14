@@ -27,31 +27,31 @@ logger = logging.getLogger(__name__)
 class HggSkeletonProcessor(processor.ProcessorABC):  # type: ignore
     # Generic class-level defaults
     # muon selection cuts
-    muon_pt_threshold = 10
+    muon_pt_threshold = 24
     muon_max_eta = 2.4
     mu_id_wp = "medium"
-    mu_iso_wp = "tight"
+    mu_iso_wp = "medium"
     muon_photon_min_dr = 0.2
     global_muon = True
     muon_max_dxy = None
     muon_max_dz = None
 
     # electron selection cuts
-    electron_pt_threshold = 15
+    electron_pt_threshold = 30
     electron_max_eta = 2.5
     electron_photon_min_dr = 0.2
-    el_id_wp = "loose"  # this includes isolation
+    el_id_wp = "WP80"  # this includes isolation
     electron_max_dxy = None
     electron_max_dz = None
 
     # jet selection cuts
-    jet_jetId = "tightLepVeto"  # can be "tightLepVeto" or "tight": https://twiki.cern.ch/twiki/bin/view/CMS/JetID13p6TeV#nanoAOD_Flags
+    jet_jetId = "tight"  # can be "tightLepVeto" or "tight": https://twiki.cern.ch/twiki/bin/view/CMS/JetID13p6TeV#nanoAOD_Flags
     jet_dipho_min_dr = 0.4
     jet_pho_min_dr = 0.4
     jet_ele_min_dr = 0.4
     jet_muo_min_dr = 0.4
     jet_pt_threshold = 20
-    jet_max_eta = 4.7
+    jet_max_eta = 2.4
     bjet_mva = "particleNet"  # Possible choices: particleNet, deepJet, robustParticleTransformer
     bjet_wp = "T"  # Possible choices: L, M, T, XT, XXT
 
@@ -61,9 +61,11 @@ class HggSkeletonProcessor(processor.ProcessorABC):  # type: ignore
     clean_jet_muo = True
 
     # photon preselection cuts
-    min_pt_photon = 25.0
-    min_pt_lead_photon = 35.0
-    min_mvaid = -0.7
+    min_pt_photon = 15.0
+    min_pt_lead_photon = 15.0
+    min_mvaid = -0.9
+    min_mvaid_EB = 0.0439603
+    min_mvaid_EE = -0.249526
     max_sc_eta = 2.5
     gap_barrel_eta = 1.4442
     gap_endcap_eta = 1.566
@@ -159,7 +161,8 @@ class HggSkeletonProcessor(processor.ProcessorABC):  # type: ignore
             self.taggers = taggers
             self.taggers.sort(key=lambda x: x.priority)
 
-        self.prefixes = {"pho_lead": "lead", "pho_sublead": "sublead"}
+        # self.prefixes = {"pho_lead": "lead", "pho_sublead": "sublead"}
+        self.prefixes = {"pho_lead": "pholead", "pho_sublead": "phosublead", "bjet_lead": "bJetlead", "bjet_sublead": "bJetsublead", "bquark_lead": "genblead", "bquark_sublead": "genbsublead", "bjet_best": "bJetbest", "bjet": "bJet", "lepton":"lep"}
 
         if not self.doDeco:
             logger.info("Skipping Mass resolution decorrelation as required")

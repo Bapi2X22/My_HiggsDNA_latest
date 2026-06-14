@@ -1,5 +1,4 @@
 import subprocess
-import sys
 import json
 from pathlib import Path
 import os
@@ -229,6 +228,9 @@ class LXPlusVanillaSubmitter:
                 with open(job_file_executable, "w") as exe:
                     exe.write("#!/bin/sh\n")
                     exe.write(f"export X509_USER_PROXY={proxy}\n")
+                    exe.write('. /cvmfs/sft.cern.ch/lcg/views/LCG_109/x86_64-el9-gcc15-opt/setup.sh\n')
+                    exe.write('export PYTHONPATH="/afs/cern.ch/user/b/bbapi/.local/lib/python3.13/site-packages/:$PYTHONPATH"\n')
+                    exe.write('export PATH="/afs/cern.ch/user/b/bbapi/.local/bin:$PATH"\n')
                     for idx, json_file in enumerate(analysis_list):
                         args_ = self.args_string.replace(original_analysis_path, json_file).replace(" vanilla_lxplus", " iterative")
                         exe.write(f"if [ $1 -eq {idx} ]; then\n")
@@ -243,7 +245,7 @@ class LXPlusVanillaSubmitter:
                             )
                             exe.write("    RUN_RC=0\n")
                             exe.write(
-                                f"    /usr/bin/env {sys.prefix}/bin/run_analysis.py {args_} || RUN_RC=107\n"
+                                f"    /usr/bin/env run_analysis.py {args_} || RUN_RC=107\n"
                             )
                             exe.write(
                                 f'    if ! tar -C "${{{SCRATCH_DUMP_ENV}}}" -czf "${{STAGEOUT_TARBALL}}" .; then\n'
@@ -257,7 +259,7 @@ class LXPlusVanillaSubmitter:
                             exe.write(f'    rm -rf "${{{SCRATCH_DUMP_ENV}}}"\n')
                             exe.write("    exit ${RUN_RC}\n")
                         else:
-                            exe.write(f"    /usr/bin/env {sys.prefix}/bin/run_analysis.py {args_} || exit 107\n")
+                            exe.write(f"    /usr/bin/env run_analysis.py {args_} || exit 107\n")
                         if not self.stage_output:
                             exe.write("    exit 0\n")
                         exe.write("fi\n")
@@ -316,6 +318,9 @@ class LXPlusVanillaSubmitter:
                         with open(job_file_executable, "w") as exe:
                             exe.write("#!/bin/sh\n")
                             exe.write(f"export X509_USER_PROXY={proxy}\n")
+                            exe.write('. /cvmfs/sft.cern.ch/lcg/views/LCG_109/x86_64-el9-gcc15-opt/setup.sh\n')
+                            exe.write('export PYTHONPATH="/afs/cern.ch/user/b/bbapi/.local/lib/python3.13/site-packages/:$PYTHONPATH"\n')
+                            exe.write('export PATH="/afs/cern.ch/user/b/bbapi/.local/bin:$PATH"\n')
                             exe.write(
                                 f'export {SCRATCH_DUMP_ENV}="${{_CONDOR_SCRATCH_DIR}}/{base_name}_stage"\n'
                             )
@@ -326,7 +331,7 @@ class LXPlusVanillaSubmitter:
                             )
                             exe.write("RUN_RC=0\n")
                             exe.write(
-                                f"/usr/bin/env {sys.prefix}/bin/run_analysis.py {args_} || RUN_RC=107\n"
+                                f"/usr/bin/env run_analysis.py {args_} || RUN_RC=107\n"
                             )
                             exe.write(
                                 f'if ! tar -C "${{{SCRATCH_DUMP_ENV}}}" -czf "${{STAGEOUT_TARBALL}}" .; then\n'
@@ -345,7 +350,7 @@ class LXPlusVanillaSubmitter:
                             sub.write(f"executable = {job_file_executable}\n")
                         else:
                             sub.write("executable = /usr/bin/env\n")
-                            sub.write(f"arguments = {sys.prefix}/bin/run_analysis.py {args_} || exit 107\n")
+                            sub.write(f"arguments = run_analysis.py {args_} || exit 107\n")
                         sub.write(f"output = {base_name}.out\n")
                         sub.write(f"error = {base_name}.err\n")
                         sub.write(f"log = {jobs_dir}/{base_name}.log\n")
@@ -385,3 +390,4 @@ class LXPlusVanillaSubmitter:
                 subprocess.run(["condor_submit", "-spool", jf])
             else:
                 subprocess.run(["condor_submit", jf])
+

@@ -44,4 +44,74 @@ th_130: "output_THToGG_M130_13TeV_amcatnlo_pythia8.root"
 dy:   "output_DYto2L.root"
 ggbox: "output_GG-Box-3Jets_MGG-80.root"
 gjet:  "output_GJet_DoubleEMEnriched_MGG-80.root"
+
+
+WHM20Y2016APV_20: "output_WHM20Y2016APV_M20_13TeV_amcatnlo_pythia8.root"
+WHM20Y2016_20:    "output_WHM20Y2016_M20_13TeV_amcatnlo_pythia8.root"
+WHM20Y2017_20:    "output_WHM20Y2017_M20_13TeV_amcatnlo_pythia8.root"
+WHM20Y2018_20:    "output_WHM20Y2018_M20_13TeV_amcatnlo_pythia8.root"
+
+WHM25Y2016APV_25: "output_WHM25Y2016APV_M25_13TeV_amcatnlo_pythia8.root"
+WHM25Y2016_25:    "output_WHM25Y2016_M25_13TeV_amcatnlo_pythia8.root"
+WHM25Y2017_25:    "output_WHM25Y2017_M25_13TeV_amcatnlo_pythia8.root"
+WHM25Y2018_25:    "output_WHM25Y2018_M25_13TeV_amcatnlo_pythia8.root"
+
+WHM30Y2016APV_30: "output_WHM30Y2016APV_M30_13TeV_amcatnlo_pythia8.root"
+WHM30Y2016_30:    "output_WHM30Y2016_M30_13TeV_amcatnlo_pythia8.root"
+WHM30Y2017_30:    "output_WHM30Y2017_M30_13TeV_amcatnlo_pythia8.root"
+WHM30Y2018_30:    "output_WHM30Y2018_M30_13TeV_amcatnlo_pythia8.root"
+
+WHM35Y2016APV_35: "output_WHM35Y2016APV_M35_13TeV_amcatnlo_pythia8.root"
+WHM35Y2016_35:    "output_WHM35Y2016_M35_13TeV_amcatnlo_pythia8.root"
+WHM35Y2017_35:    "output_WHM35Y2017_M35_13TeV_amcatnlo_pythia8.root"
+WHM35Y2018_35:    "output_WHM35Y2018_M35_13TeV_amcatnlo_pythia8.root"
+
+WHM40Y2016APV_40: "output_WHM40Y2016APV_M40_13TeV_amcatnlo_pythia8.root"
+WHM40Y2016_40:    "output_WHM40Y2016_M40_13TeV_amcatnlo_pythia8.root"
+WHM40Y2017_40:    "output_WHM40Y2017_M40_13TeV_amcatnlo_pythia8.root"
+WHM40Y2018_40:    "output_WHM40Y2018_M40_13TeV_amcatnlo_pythia8.root"
+
+WHM45Y2016APV_45: "output_WHM45Y2016APV_M45_13TeV_amcatnlo_pythia8.root"
+WHM45Y2016_45:    "output_WHM45Y2016_M45_13TeV_amcatnlo_pythia8.root"
+WHM45Y2017_45:    "output_WHM45Y2017_M45_13TeV_amcatnlo_pythia8.root"
+WHM45Y2018_45:    "output_WHM45Y2018_M45_13TeV_amcatnlo_pythia8.root"
+
+WHM50Y2016APV_50: "output_WHM50Y2016APV_M50_13TeV_amcatnlo_pythia8.root"
+WHM50Y2016_50:    "output_WHM50Y2016_M50_13TeV_amcatnlo_pythia8.root"
+WHM50Y2017_50:    "output_WHM50Y2017_M50_13TeV_amcatnlo_pythia8.root"
+WHM50Y2018_50:    "output_WHM50Y2018_M50_13TeV_amcatnlo_pythia8.root"
+
+WHM55Y2016APV_55: "output_WHM55Y2016APV_M55_13TeV_amcatnlo_pythia8.root"
+WHM55Y2016_55:    "output_WHM55Y2016_M55_13TeV_amcatnlo_pythia8.root"
+WHM55Y2017_55:    "output_WHM55Y2017_M55_13TeV_amcatnlo_pythia8.root"
+WHM55Y2018_55:    "output_WHM55Y2018_M55_13TeV_amcatnlo_pythia8.root"
+
+WHM60Y2016APV_60: "output_WHM60Y2016APV_M60_13TeV_amcatnlo_pythia8.root"
+WHM60Y2016_60:    "output_WHM60Y2016_M60_13TeV_amcatnlo_pythia8.root"
+WHM60Y2017_60:    "output_WHM60Y2017_M60_13TeV_amcatnlo_pythia8.root"
+WHM60Y2018_60:    "output_WHM60Y2018_M60_13TeV_amcatnlo_pythia8.root"
+
+WHM12Y2024_12:    "output_WHM12Y2024_M12_13p6TeV_amcatnlo_pythia8.root"
+WHM15Y2024_15:    "output_WHM15Y2024_M15_13p6TeV_amcatnlo_pythia8.root"
+WHM20Y2024_20:    "output_WHM20Y2024_M20_13p6TeV_amcatnlo_pythia8.root"
+WHM25Y2024_25:    "output_WHM25Y2024_M25_13p6TeV_amcatnlo_pythia8.root"
+WHM30Y2024_30:    "output_WHM30Y2024_M30_13p6TeV_amcatnlo_pythia8.root"
+WHM35Y2024_35:    "output_WHM35Y2024_M35_13p6TeV_amcatnlo_pythia8.root"
+WHM40Y2024_40:    "output_WHM40Y2024_M40_13p6TeV_amcatnlo_pythia8.root"
+WHM45Y2024_45:    "output_WHM45Y2024_M45_13p6TeV_amcatnlo_pythia8.root"
+WHM50Y2024_50:    "output_WHM50Y2024_M50_13p6TeV_amcatnlo_pythia8.root"
+WHM55Y2024_55:    "output_WHM55Y2024_M55_13p6TeV_amcatnlo_pythia8.root"
+WHM60Y2024_60:    "output_WHM60Y2024_M60_13p6TeV_amcatnlo_pythia8.root"
+
+
+TTG1Jets:         "output_TTG1Jets_13p6TeV_amcatnlo_pythia8.root"
+TTto2L2Nu:        "output_TTto2L2Nu_13p6TeV_powheg.root"
+TTtoLNu2Q:        "output_TTtoLNu2Q_13p6TeV_powheg.root"
+WGtoLNuG:         "output_WGtoLNuG_13p6TeV_amcatnlo_pythia8.root"
+DYto2Mu50:        "output_DYto2Mu50_13p6TeV_amcatnlo_pythia8.root"
+DYto2E50:         "output_DYto2E50_13p6TeV_amcatnlo_pythia8.root"
+DYto2E10:         "output_DYto2E10_13p6TeV_amcatnlo_pythia8.root"
+DYto2Mu10:        "output_DYto2Mu10_13p6TeV_amcatnlo_pythia8.root"
+
+
 data:  "allData.root"

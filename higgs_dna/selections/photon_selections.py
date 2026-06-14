@@ -1,5 +1,6 @@
 import awkward as ak
 import numpy
+from higgs_dna.selections.object_selections import delta_r_mask
 
 
 # photon preselection for Run3 -> take as input nAOD Photon collection and return the Photons that pass
@@ -182,3 +183,39 @@ def photon_preselection(
             )
             & (isEB_high_r9 | isEB_low_r9 | isEE_high_r9 | isEE_low_r9)
         ]
+
+def photon_preselection_bbgg(
+    self,
+    photons: ak.Array,
+    events: ak.Array,
+    electrons: ak.Array,
+    muons: ak.Array,
+    electron_veto=True,
+    revert_electron_veto=False,
+    year="2023",
+    IsFlag=False
+) -> ak.Array:
+    """
+    Apply preselection cuts to photons.
+    Note that these selections are applied on each photon, it is not based on the diphoton pair.
+    """
+
+    if electron_veto:
+        e_veto_cut = (photons.electronVeto == 1)
+    elif revert_electron_veto:
+        e_veto_cut = (photons.electronVeto == 0)
+    else:
+        e_veto_cut = ak.ones_like(photons.electronVeto, dtype=bool)
+
+    dr_cut = delta_r_mask(photons, electrons, 0.2)
+    dr_cut_muon = delta_r_mask(photons, muons, 0.2)
+
+    return photons[
+        e_veto_cut
+        & (~photons.pixelSeed)
+        & (photons.pt > self.min_pt_photon)
+        & (photons.isScEtaEB | photons.isScEtaEE)
+        & dr_cut
+        & dr_cut_muon
+        &(ak.where(photons.isScEtaEB, photons.mvaID > self.min_mvaid_EB, photons.mvaID > self.min_mvaid_EE))
+    ]

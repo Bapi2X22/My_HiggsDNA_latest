@@ -11,6 +11,7 @@ from higgs_dna.workflows.lowmass import LowMassProcessor
 from higgs_dna.workflows.btagging import BTaggingEfficienciesProcessor, BTaggingEfficienciesHHbbggProcessor
 from higgs_dna.workflows.stxs import STXSProcessor
 from higgs_dna.workflows.diphoton_training import DiphoTrainingProcessor
+from higgs_dna.workflows.My_first_processor_WH_Cat1_HDNA_presel import My_first_processor_WH_Cat1_HDNA_presel
 
 from higgs_dna.workflows.taggers import taggers
 
@@ -32,5 +33,6 @@ workflows["BTagging"] = BTaggingEfficienciesProcessor
 workflows["BTaggingHHbbgg"] = BTaggingEfficienciesHHbbggProcessor
 workflows["stxs"] = STXSProcessor
 workflows["diphotonID"] = DiphoTrainingProcessor
+workflows["My_first_processor_WH_Cat1_HDNA_presel"] = My_first_processor_WH_Cat1_HDNA_presel
 
 __all__ = ["workflows", "taggers"]

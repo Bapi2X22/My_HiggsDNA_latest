@@ -414,7 +414,25 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
 #--------------------------------Now do your event selection according to bbgg analysis----------------------------------------------------
             one_ele = awkward.num(electrons) == 1
             one_mu = awkward.num(muons) == 1
-            lepton_channel_mask = one_ele ^ one_mu
+
+            if self.data_kind == "mc":
+                # MC: keep both channels
+                lepton_channel_mask = one_ele ^ one_mu
+
+            else:
+                # Data
+                if "EGamma" in dataset_name:          # or however you identify the EGamma dataset
+                    lepton_channel_mask = one_ele & (awkward.num(muons) == 0)
+
+                elif "Muon" in dataset_name:       # or "SingleMuon", "MuonEG", etc.
+                    lepton_channel_mask = one_mu & (awkward.num(electrons) == 0)
+
+                else:
+                    raise ValueError(f"Unknown data stream: {dataset_name}")
+
+            b_jets = jets[jets.btagUParTAK4B > 0.1272]
+            at_least_one_bjets = awkward.num(b_jets) >= 1
+            at_least_two_photons = awkward.num(photons) >= 2
 
             b_jets = jets[jets.btagUParTAK4B > 0.1272]
             at_least_one_bjets = awkward.num(b_jets) >= 1
@@ -796,24 +814,107 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
                 "mass_point"
             ]
 
-            has2b = awkward.to_numpy(n_bjets >= 2)
+#------------------------------------------------------------------------------------------------------------
+            # has2b = awkward.to_numpy(n_bjets >= 2)
 
-            bdt_score = numpy.full(len(n_bjets), -999.0)
+            # bdt_score = numpy.full(len(n_bjets), -999.0)
 
-            X_2b = X[has2b]
+            # X_2b = X[has2b]
 
-            if len(X_2b) > 0:
-                dmatrix = xgb.DMatrix(
-                    X_2b,
-                    feature_names=self.inputVars
-                )
+            # if len(X_2b) > 0:
+            #     dmatrix = xgb.DMatrix(
+            #         X_2b,
+            #         feature_names=self.inputVars
+            #     )
 
-                bdt_score[has2b] = self.bdt_model.predict(dmatrix)
+            #     bdt_score[has2b] = self.bdt_model.predict(dmatrix)
 
-            # dmatrix = xgb.DMatrix(X, feature_names=self.inputVars)
+            # # dmatrix = xgb.DMatrix(X, feature_names=self.inputVars)
 
-            # bdt_score = self.bdt_model.predict(dmatrix)
+            # # bdt_score = self.bdt_model.predict(dmatrix)
 
+            # diphotons["BDT_score"] = bdt_score
+            # diphotons["mass_point"] = mass_point
+
+#-----------------------------------------------------------------------------------------------------------------------
+
+            # has2b = awkward.to_numpy(n_bjets >= 2)
+
+            # # Initialize the randomized/assigned mass-point score
+            # bdt_score = numpy.full(len(n_bjets), -999.0)
+
+            # for m in mass_grid:
+
+            #     X_tmp = X.copy()
+            #     X_tmp[:, -1] = m
+
+            #     score_full = numpy.full(len(n_bjets), -999.0)
+
+            #     X_2b = X_tmp[has2b]
+
+            #     if len(X_2b) > 0:
+            #         dmatrix = xgb.DMatrix(
+            #             X_2b,
+            #             feature_names=self.inputVars
+            #         )
+
+            #         score_full[has2b] = self.bdt_model.predict(dmatrix)
+
+            #     # Save the score for this mass hypothesis
+            #     diphotons[f"BDT_{m}"] = score_full
+
+            #     # Fill BDT_score for events whose assigned mass hypothesis is m
+            #     bdt_score[mass_point == m] = score_full[mass_point == m]
+
+            # diphotons["BDT_score"] = bdt_score
+            # diphotons["mass_point"] = mass_point
+
+            # Signal: evaluate only the true mass point
+            if self.data_kind == "mc" and "WH-2024M" in dataset_name:
+
+                X_tmp = X.copy()
+                X_tmp[:, -1] = mass_point
+
+                bdt_score = numpy.full(len(n_bjets), -999.0)
+
+                X_2b = X_tmp[has2b]
+
+                if len(X_2b) > 0:
+                    dmatrix = xgb.DMatrix(
+                        X_2b,
+                        feature_names=self.inputVars,
+                    )
+                    bdt_score[has2b] = self.bdt_model.predict(dmatrix)
+
+            # Background (and data): evaluate all mass hypotheses
+            else:
+
+                bdt_score = numpy.full(len(n_bjets), -999.0)
+
+                for m in mass_grid:
+
+                    X_tmp = X.copy()
+                    X_tmp[:, -1] = m
+
+                    score_full = numpy.full(len(n_bjets), -999.0)
+
+                    X_2b = X_tmp[has2b]
+
+                    if len(X_2b) > 0:
+                        dmatrix = xgb.DMatrix(
+                            X_2b,
+                            feature_names=self.inputVars,
+                        )
+
+                        score_full[has2b] = self.bdt_model.predict(dmatrix)
+
+                    # Store all BDTs only for background
+                    diphotons[f"BDT_{m}"] = score_full
+
+                    # Fill the assigned score
+                    bdt_score[mass_point == m] = score_full[mass_point == m]
+
+            # Common output
             diphotons["BDT_score"] = bdt_score
             diphotons["mass_point"] = mass_point
 
@@ -895,8 +996,9 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
 
             # return if there is no surviving events
             if len(diphotons) == 0:
-                logger.debug("No surviving events in this run, return now!")
-                return histos_etc
+                # logger.debug("No surviving events in this run, return now!")
+                logger.debug("No surviving events in this run. Writing empty parquet.")
+                # return histos_etc
             if self.data_kind == "mc":
                 # initiate Weight container here, after selection, since event selection cannot easily be applied to weight container afterwards
                 event_weights = Weights(size=len(events[selection_mask]))

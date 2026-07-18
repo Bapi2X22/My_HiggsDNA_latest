@@ -160,7 +160,8 @@
         {
             "mainAnalysis":
             [
-            "HLT_IsoMu24*"
+            "HLT_Ele30_WPTight_Gsf",
+            "HLT_IsoMu24"
             ]
         },
         ".*EGamma.*":
@@ -171,8 +172,8 @@
             ],
             "mainAnalysis":
             [
-            "HLT_Ele30_WPTight_Gsf*",
-            "HLT_IsoMu24*"
+            "HLT_Ele30_WPTight_Gsf",
+            "HLT_IsoMu24"
             ]
         },
         ".*DoubleMuon.*" :

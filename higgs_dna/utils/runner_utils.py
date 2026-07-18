@@ -76,6 +76,7 @@ def get_main_parser():
             ".*EGamma.*2018.*",
             ".*EGamma.*",
             ".*SingleEle.*",
+            ".*SingleMuon.*",
             ".*DoubleMuon.*",
         ),
     )

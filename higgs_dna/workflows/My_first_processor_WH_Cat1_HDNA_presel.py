@@ -54,7 +54,7 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
         model_file = os.path.join(
             os.path.dirname(__file__),
             "models",
-            "trained_model.pkl",
+            "model_htoaaTo2b2g.pkl",
         )
 
         with open(model_file, "rb") as f:
@@ -63,17 +63,26 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
         self.bdt_model = modelDict["xgbModel"]
 
         self.inputVars = [
-            "leppt","lepeta",
-            "first_jet_eta","second_jet_eta",
-            "pT1_by_mbb","pT2_by_mbb",
-            "n_bJets",
-            "pholead_eta","phosublead_eta",
-            "first_jet_B","second_jet_B",
-            "pholead_mvaID","phosublead_mvaID",
-            "pT1_by_mgg","pT2_by_mgg",
-            "delphi_gg","delphi_bb","delphi_bbgg",
-            "mass_point"
-        ]
+                "leppt",
+                "lepeta",
+                "first_jet_eta",
+                "second_jet_eta",
+                "pT1_by_mbb",
+                "pT2_by_mbb",
+                "first_jet_B",
+                "second_jet_B",
+                "Njets",
+                "pholead_eta",
+                "phosublead_eta",
+                "pT1_by_mgg",
+                "pT2_by_mgg",
+                "pholead_mvaID",
+                "phosublead_mvaID",
+                "delphi_gg",
+                "delphi_bb",
+                "delphi_bbgg",
+                "mass_point",
+            ]
     # def __init__(
     #     self,
     #     metaconditions: Dict[str, Any],
@@ -412,20 +421,46 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
 
 
 #--------------------------------Now do your event selection according to bbgg analysis----------------------------------------------------
+            # one_ele = awkward.num(electrons) == 1
+            # one_mu = awkward.num(muons) == 1
+
+            # if self.data_kind == "mc":
+            #     # MC: keep both channels
+            #     lepton_channel_mask = one_ele ^ one_mu
+
+            # else:
+            #     # Data
+            #     if "EGamma" in dataset_name:          # or however you identify the EGamma dataset
+            #         lepton_channel_mask = one_ele & (awkward.num(muons) == 0)
+
+            #     elif "Muon" in dataset_name:       # or "SingleMuon", "MuonEG", etc.
+            #         lepton_channel_mask = one_mu & (awkward.num(electrons) == 0)
+
+            #     else:
+            #         raise ValueError(f"Unknown data stream: {dataset_name}")
+
+
             one_ele = awkward.num(electrons) == 1
+            zero_ele = awkward.num(electrons) == 0
+
             one_mu = awkward.num(muons) == 1
+            zero_mu = awkward.num(muons) == 0
+
+            # Define the two exclusive channels
+            electron_channel = one_ele & zero_mu
+            muon_channel     = one_mu & zero_ele
 
             if self.data_kind == "mc":
-                # MC: keep both channels
-                lepton_channel_mask = one_ele ^ one_mu
+                # Keep both channels
+                lepton_channel_mask = electron_channel | muon_channel
 
             else:
-                # Data
-                if "EGamma" in dataset_name:          # or however you identify the EGamma dataset
-                    lepton_channel_mask = one_ele & (awkward.num(muons) == 0)
+                # Keep only the channel corresponding to the data stream
+                if "EGamma" in dataset_name:
+                    lepton_channel_mask = electron_channel
 
-                elif "Muon" in dataset_name:       # or "SingleMuon", "MuonEG", etc.
-                    lepton_channel_mask = one_mu & (awkward.num(electrons) == 0)
+                elif "Muon" in dataset_name:   # or "SingleMuon", etc.
+                    lepton_channel_mask = muon_channel
 
                 else:
                     raise ValueError(f"Unknown data stream: {dataset_name}")
@@ -780,19 +815,19 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
                 awkward.to_numpy(pT1_by_mbb),
                 awkward.to_numpy(pT2_by_mbb),
 
-                awkward.to_numpy(n_bjets),
+                awkward.to_numpy(first_jet_B),
+                awkward.to_numpy(second_jet_B),
+
+                awkward.to_numpy(Njets),
 
                 pholead_eta,
                 phosublead_eta,
 
-                awkward.to_numpy(first_jet_B),
-                awkward.to_numpy(second_jet_B),
+                awkward.to_numpy(pT1_by_mgg),
+                awkward.to_numpy(pT2_by_mgg),
 
                 pholead_mvaID,
                 phosublead_mvaID,
-
-                awkward.to_numpy(pT1_by_mgg),
-                awkward.to_numpy(pT2_by_mgg),
 
                 awkward.to_numpy(delphi_gg),
                 awkward.to_numpy(delphi_bb),
@@ -801,17 +836,40 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
                 mass_point
             ])
 
+            # inputVars = [
+            #     "leppt","lepeta",
+            #     "first_jet_eta","second_jet_eta",
+            #     "pT1_by_mbb","pT2_by_mbb",
+            #     "n_bJets",
+            #     "pholead_eta","phosublead_eta",
+            #     "first_jet_B","second_jet_B",
+            #     "pholead_mvaID","phosublead_mvaID",
+            #     "pT1_by_mgg","pT2_by_mgg",
+            #     "delphi_gg","delphi_bb","delphi_bbgg",
+            #     "mass_point"
+            # ]
+
+
             inputVars = [
-                "leppt","lepeta",
-                "first_jet_eta","second_jet_eta",
-                "pT1_by_mbb","pT2_by_mbb",
-                "n_bJets",
-                "pholead_eta","phosublead_eta",
-                "first_jet_B","second_jet_B",
-                "pholead_mvaID","phosublead_mvaID",
-                "pT1_by_mgg","pT2_by_mgg",
-                "delphi_gg","delphi_bb","delphi_bbgg",
-                "mass_point"
+                "leppt",
+                "lepeta",
+                "first_jet_eta",
+                "second_jet_eta",
+                "pT1_by_mbb",
+                "pT2_by_mbb",
+                "first_jet_B",
+                "second_jet_B",
+                "Njets",
+                "pholead_eta",
+                "phosublead_eta",
+                "pT1_by_mgg",
+                "pT2_by_mgg",
+                "pholead_mvaID",
+                "phosublead_mvaID",
+                "delphi_gg",
+                "delphi_bb",
+                "delphi_bbgg",
+                "mass_point",
             ]
 
 #------------------------------------------------------------------------------------------------------------

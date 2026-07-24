@@ -608,19 +608,26 @@ class My_first_processor_WH_Cat1_HDNA_presel_test(HggBaseProcessor):
 
 #--------------------------------Now do your event selection according to bbgg analysis----------------------------------------------------
             one_ele = awkward.num(electrons) == 1
+            zero_ele = awkward.num(electrons) == 0
+
             one_mu = awkward.num(muons) == 1
+            zero_mu = awkward.num(muons) == 0
+
+            # Define the two exclusive channels
+            electron_channel = one_ele & zero_mu
+            muon_channel     = one_mu & zero_ele
 
             if self.data_kind == "mc":
-                # MC: keep both channels
-                lepton_channel_mask = one_ele ^ one_mu
+                # Keep both channels
+                lepton_channel_mask = electron_channel | muon_channel
 
             else:
-                # Data
-                if "EGamma" in dataset_name:          # or however you identify the EGamma dataset
-                    lepton_channel_mask = one_ele & (awkward.num(muons) == 0)
+                # Keep only the channel corresponding to the data stream
+                if "EGamma" in dataset_name:
+                    lepton_channel_mask = electron_channel
 
-                elif "Muon" in dataset_name:       # or "SingleMuon", "MuonEG", etc.
-                    lepton_channel_mask = one_mu & (awkward.num(electrons) == 0)
+                elif "Muon" in dataset_name:   # or "SingleMuon", etc.
+                    lepton_channel_mask = muon_channel
 
                 else:
                     raise ValueError(f"Unknown data stream: {dataset_name}")

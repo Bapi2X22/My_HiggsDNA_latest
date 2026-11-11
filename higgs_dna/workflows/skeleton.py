@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class HggSkeletonProcessor(processor.ProcessorABC):  # type: ignore
     # Generic class-level defaults
     # muon selection cuts
-    muon_pt_threshold = 24
+    muon_pt_threshold = 26
     muon_max_eta = 2.4
     mu_id_wp = "medium"
     mu_iso_wp = "medium"
@@ -62,7 +62,7 @@ class HggSkeletonProcessor(processor.ProcessorABC):  # type: ignore
 
     # photon preselection cuts
     min_pt_photon = 15.0
-    min_pt_lead_photon = 15.0
+    min_pt_lead_photon = 0.0
     min_mvaid = -0.9
     min_mvaid_EB = 0.0439603
     min_mvaid_EE = -0.249526
@@ -103,6 +103,30 @@ class HggSkeletonProcessor(processor.ProcessorABC):  # type: ignore
     EA2_EE4 = -8.10369e-05
     EA1_EE5 = 0.0369417
     EA2_EE5 = -2.76885e-05
+
+
+    # Object-selection switches for cumulative cutflow
+    apply_muon_id = True
+    apply_electron_id = True
+    apply_muon_iso = True
+    apply_global_muon = True
+
+    apply_photon_pt = True
+    apply_lepton_pt = True
+    apply_photon_mvaid = True
+    apply_pixel_seed_veto = True
+    apply_electron_photon_dr = True
+    apply_muon_photon_dr = True
+
+    apply_jet_pt_eta = True
+    apply_jet_id = True
+    apply_photon_jet_dr = True
+    apply_electron_jet_dr = True
+    apply_muon_jet_dr = True
+
+    apply_btag = True
+    apply_two_bjets = True
+
 
     def __init__(
         self,

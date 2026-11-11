@@ -9,6 +9,7 @@ from higgs_dna.selections.diphoton_selections import build_diphoton_candidates, 
 from higgs_dna.selections.photon_selections import photon_preselection_bbgg
 # from higgs_dna.selections.photon_preselections import photon_preselections
 from higgs_dna.selections.lepton_selections import select_electrons_bbgg, select_muons_bbgg
+from higgs_dna.systematics import apply_systematic_variations_object_level
 from higgs_dna.selections.jet_selections import select_jets_bbgg, jetvetomap
 from higgs_dna.selections.lumi_selections import select_lumis
 from higgs_dna.utils.dumping_utils import (
@@ -39,6 +40,7 @@ import vector
 from coffea import processor
 from coffea.analysis_tools import Weights
 from copy import deepcopy
+import uproot
 
 import logging
 
@@ -50,6 +52,8 @@ vector.register_awkward()
 class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self._metadata_cache = {}
 
         model_file = os.path.join(
             os.path.dirname(__file__),
@@ -124,6 +128,230 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
     #     )
 
 
+
+
+    def get_presel_metadata(self, events):
+        """
+        Return the preselection metadata for the current input file.
+
+        For skimmed files:
+            Read the Metadata tree once and cache it.
+
+        For standard NanoAOD:
+            Fall back to the current chunk information.
+        """
+
+        if not hasattr(self, "_metadata_cache"):
+            self._metadata_cache = {}
+
+        cache_key = events.metadata["fileuuid"]
+        filename = events.metadata["filename"]
+
+        # Already cached
+
+        if cache_key in self._metadata_cache:
+            return self._metadata_cache[cache_key]
+
+        try:
+
+            with uproot.open(filename) as f:
+
+                meta = f["Metadata"]
+
+                info = {
+                    "sum_genw_presel": float(
+                        meta["sum_genw_presel"].array(library="np")[0]
+                    ),
+                    "n_events_presel": int(
+                        meta["n_events_presel"].array(library="np")[0]
+                    ),
+                }
+
+        except (uproot.KeyInFileError, KeyError, OSError):
+
+            # Standard NanoAOD (or no Metadata tree)
+            info = {
+                "sum_genw_presel": float(awkward.sum(events.genWeight)),
+                "n_events_presel": len(events),
+            }
+
+        self._metadata_cache[cache_key] = info
+
+        return info
+    
+    # def photon_from_DYG(self, photons, genpart):
+
+    #     order = awkward.argsort(photons.pt, axis=1, ascending=False)
+    #     photons = photons[order]
+    #     photons = photons[:, :2]
+
+    #     idx = photons.genPartIdx
+    #     valid = idx >= 0
+
+    #     photon = awkward.mask(genpart[idx], valid)
+
+    #     mother_idx = photon.genPartIdxMother
+    #     mother = awkward.mask(genpart[mother_idx], mother_idx >= 0)
+
+    #     photon_pdgId = photon.pdgId
+    #     mother_pdgId = mother.pdgId
+
+    #     from_lepton = (abs(photon_pdgId) == 22) & ((abs(mother_pdgId) == 11) | (abs(mother_pdgId) == 13))
+    #     from_Z = abs(mother_pdgId) == 23
+    #     from_gamma = abs(mother_pdgId) == 22
+
+    #     is_DYG_photon = from_lepton | from_Z | from_gamma
+
+    #     event_is_DYGto2LG = awkward.any(is_DYG_photon, axis=1)
+
+    #     return event_is_DYGto2LG
+
+    def photon_from_DYG(self, photons, genpart):
+
+        order = awkward.argsort(photons.pt, axis=1, ascending=False)
+        photons = photons[order][:, :2]
+
+        idx = photons.genPartIdx
+
+        def check_genpart(idx, pdgId, motherIdx):
+
+            idx = int(idx)
+
+            # Matched GenPart must be a photon
+            if abs(int(pdgId[idx])) != 22:
+                return False
+
+            current = idx
+
+            for _ in range(100):
+
+                mother = int(motherIdx[current])
+
+                # Photon has no mother -> accept
+                if mother == -1:
+                    return True
+
+                mother_pdg = abs(int(pdgId[mother]))
+
+                # Photon -> photon: continue ancestry
+                if mother_pdg == 22:
+                    current = mother
+                    continue
+
+                # First non-photon ancestor
+                return (
+                    mother_pdg == 23 or
+                    mother_pdg in (11, 13, 15) or
+                    mother_pdg in (1, 2, 3, 4, 5, 6)
+                )
+
+            return False
+
+        event_results = []
+
+        for evt in range(len(idx)):
+
+            event_idx = idx[evt]
+            event_pdgId = genpart.pdgId[evt]
+            event_motherIdx = genpart.genPartIdxMother[evt]
+
+            results = []
+
+            for gen_idx in event_idx:
+
+                gen_idx = int(gen_idx)
+
+                if gen_idx < 0:
+                    results.append(False)
+                else:
+                    results.append(
+                        check_genpart(
+                            gen_idx,
+                            event_pdgId,
+                            event_motherIdx
+                        )
+                    )
+
+            event_results.append(
+                any(results)
+            )
+
+        return awkward.Array(numpy.asarray(event_results, dtype=bool))
+
+    def photon_from_WG(self, photons, genpart):
+
+        order = awkward.argsort(photons.pt, axis=1, ascending=False)
+        photons = photons[order][:, :2]
+
+        idx = photons.genPartIdx
+
+        def check_genpart(idx, pdgId, motherIdx):
+
+            idx = int(idx)
+
+            # Matched GenPart must be a photon
+            if abs(int(pdgId[idx])) != 22:
+                return False
+
+            current = idx
+
+            for _ in range(100):
+
+                mother = int(motherIdx[current])
+
+                # Photon has no mother -> accept
+                if mother == -1:
+                    return True
+
+                mother_pdg = abs(int(pdgId[mother]))
+
+                # Continue through photon -> photon
+                if mother_pdg == 22:
+                    current = mother
+                    continue
+
+                # First non-photon ancestor
+                return (
+                    mother_pdg == 24 or
+                    mother_pdg in (11, 13, 15) or
+                    mother_pdg in (1, 2, 3, 4, 5, 6)
+                )
+
+            return False
+
+        event_results = []
+
+        for evt in range(len(idx)):
+
+            event_idx = idx[evt]
+            event_pdgId = genpart.pdgId[evt]
+            event_motherIdx = genpart.genPartIdxMother[evt]
+
+            results = []
+
+            for gen_idx in event_idx:
+
+                gen_idx = int(gen_idx)
+
+                if gen_idx < 0:
+                    results.append(False)
+                else:
+                    results.append(
+                        check_genpart(
+                            gen_idx,
+                            event_pdgId,
+                            event_motherIdx
+                        )
+                    )
+
+            # At least one photon passes
+            event_results.append(any(results))
+
+        return awkward.Array(
+            numpy.asarray(event_results, dtype=bool)
+        )
+    
+    
     def choose_nth_object_variable(self, variable, n, fill_value):
         """
         this helper function is used to create flat collection from a jagged collection,
@@ -194,7 +422,10 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
 
         if self.data_kind == "mc":
             # Add sum of gen weights before selection for normalisation in postprocessing
-            metadata["sum_genw_presel"] = str(awkward.sum(events.genWeight))
+            # metadata["sum_genw_presel"] = str(awkward.sum(events.genWeight))
+            meta = self.get_presel_metadata(events)
+            metadata["sum_genw_presel"] = str(meta["sum_genw_presel"])
+            metadata["n_events_presel"] = str(meta["n_events_presel"])
         else:
             metadata["sum_genw_presel"] = "Data"
 
@@ -210,6 +441,11 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
         # we need ScEta for corrections and systematics, it is present in NanoAODv13+ and can be calculated using PV for older versions
         # events.Photon = add_photon_SC_eta(events.Photon, events.PV)
         events["Photon"] = add_photon_SC_eta(events.Photon, events.PV)
+        events["Electron"] = awkward.with_field(
+            events.Electron,
+            events.Electron.eta + events.Electron.deltaEtaSC,
+            "ScEta"
+        )
         Jets = events.Jet
         Jet_id = add_jetId(Jets, self.nano_version, self.year[dataset_name][0], flattenUnflatten=True)
         events["Jet"] = awkward.with_field(Jets, Jet_id, "jetId")
@@ -240,14 +476,28 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
         s_or_s_ele_applied = False
         jec_applied = False
 
+        # for correction in correction_names:
+        #     if "scale" or "smearing" in correction.lower():
+        #         if "Electron" in correction:
+        #             s_or_s_ele_applied = True
+        #         if "jec_jet_syst" in correction.lower():
+        #             jec_applied = True
+        #         else:
+        #             s_or_s_applied = True
+
         for correction in correction_names:
-            if "scale" or "smearing" in correction.lower():
-                if "Electron" in correction:
+
+            correction_lower = correction.lower()
+
+            if "scale" in correction_lower or "smearing" in correction_lower:
+                s_or_s_applied = True
+
+                if "electron" in correction_lower:
                     s_or_s_ele_applied = True
-                if "jec_jet_syst" in correction.lower():
-                    jec_applied = True
-                else:
-                    s_or_s_applied = True
+
+            if "jec_jet_syst" in correction_lower:
+                jec_applied = True
+
         print("s_or_s_applied: ", s_or_s_applied)
         print("s_or_s_ele_applied: ", s_or_s_ele_applied)
         if s_or_s_applied:
@@ -301,41 +551,64 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
         # event_idx = awkward.local_index(events)
         event_idx = awkward.local_index(events, axis=0)
         original_photons = events.Photon
+        original_electrons = events.Electron
+        original_muons = events.Muon
         nPhotons = len(events.Photon)
         print("Number of photons: ", nPhotons)
         # NOTE: jet jerc systematics are added in the correction functions and handled later
         original_jets = events.Jet
 
         # systematic object variations
-        for systematic_name in systematic_names:
-            if systematic_name in available_object_systematics.keys():
-                systematic_dct = available_object_systematics[systematic_name]
-                if systematic_dct["object"] == "Photon":
-                    logger.info(
-                        f"Adding systematic {systematic_name} to photons collection of dataset {dataset_name}"
-                    )
-                    original_photons.add_systematic(
-                        # passing the arguments here explicitly since I want to pass the events to the varying function. If there is a more elegant / flexible way, just change it!
-                        name=systematic_name,
-                        kind=systematic_dct["args"]["kind"],
-                        what=systematic_dct["args"]["what"],
-                        varying_function=functools.partial(
-                            systematic_dct["args"]["varying_function"],
-                            events=events,
-                            year=self.year[dataset_name][0],
-                        )
-                        # name=systematic_name, **systematic_dct["args"]
-                    )
-                # to be implemented for other objects here
-            elif systematic_name in available_weight_systematics:
-                # event weight systematics will be applied after photon preselection / application of further taggers
-                continue
-            else:
-                # may want to throw an error instead, needs to be discussed
-                warnings.warn(
-                    f"Could not process systematic variation {systematic_name}."
-                )
-                continue
+        # for systematic_name in systematic_names:
+        #     if systematic_name in available_object_systematics.keys():
+        #         systematic_dct = available_object_systematics[systematic_name]
+        #         if systematic_dct["object"] == "Photon":
+        #             logger.info(
+        #                 f"Adding systematic {systematic_name} to photons collection of dataset {dataset_name}"
+        #             )
+        #             original_photons.add_systematic(
+        #                 # passing the arguments here explicitly since I want to pass the events to the varying function. If there is a more elegant / flexible way, just change it!
+        #                 name=systematic_name,
+        #                 kind=systematic_dct["args"]["kind"],
+        #                 what=systematic_dct["args"]["what"],
+        #                 varying_function=functools.partial(
+        #                     systematic_dct["args"]["varying_function"],
+        #                     events=events,
+        #                     year=self.year[dataset_name][0],
+        #                 )
+        #                 # name=systematic_name, **systematic_dct["args"]
+        #             )
+        #         # to be implemented for other objects here
+        #     elif systematic_name in available_weight_systematics:
+        #         # event weight systematics will be applied after photon preselection / application of further taggers
+        #         continue
+        #     else:
+        #         # may want to throw an error instead, needs to be discussed
+        #         warnings.warn(
+        #             f"Could not process systematic variation {systematic_name}."
+        #         )
+        #         continue
+
+        collections = {
+            "Photon": original_photons,
+            "Electron": original_electrons,
+            "Muon": original_muons
+        }
+
+        # Apply the systematic variations.
+        collections = apply_systematic_variations_object_level(
+            systematic_names,
+            events,
+            self.year[dataset_name][0],
+            logger,
+            available_object_systematics,
+            available_weight_systematics,
+            collections
+        )
+
+        original_photons = collections["Photon"]
+        original_electrons = collections["Electron"]
+        original_muons = collections["Muon"]
 
         # Applying systematic variations
         photons_dct = {}
@@ -348,6 +621,20 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
                     original_photons.systematics[systematic][variation]
                 )
 
+        electrons_dct = {}
+        electrons_dct["nominal"] = original_electrons
+        logger.debug(original_electrons.systematics.fields)
+        for systematic in original_electrons.systematics.fields:
+            for variation in original_electrons.systematics[systematic].fields:
+                electrons_dct[f"{systematic}_{variation}"] = original_electrons.systematics[systematic][variation]
+
+        muons_dct = {}
+        muons_dct["nominal"] = original_muons
+        logger.debug(original_muons.systematics.fields)
+        for systematic in original_muons.systematics.fields:
+            for variation in original_muons.systematics[systematic].fields:
+                muons_dct[f"{systematic}_{variation}"] = original_muons.systematics[systematic][variation]
+
         # NOTE: jet jerc systematics are added in the corrections, now extract those variations and create the dictionary
         jerc_syst_list, jets_dct = get_obj_syst_dict(original_jets, ["pt", "mass"])
         # object systematics dictionary
@@ -356,6 +643,8 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
         # Build the flattened array of all possible variations
         variations_combined = []
         variations_combined.append(original_photons.systematics.fields)
+        variations_combined.append(original_electrons.systematics.fields)
+        variations_combined.append(original_muons.systematics.fields)
         # NOTE: jet jerc systematics are not added with add_systematics
         variations_combined.append(jerc_syst_list)
         # Flatten
@@ -374,6 +663,12 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
                 pass  # Do nothing since we already get the unvaried, but nominally corrected objets above
             elif variation in [*photons_dct]:  # [*dict] gets the keys of the dict since Python >= 3.5
                 photons = photons_dct[variation]
+            elif variation in [*electrons_dct]:
+                electrons = electrons_dct[variation]
+                logger.info(f"Replacing nominal electrons with variation {variation}.\n")
+            elif variation in [*muons_dct]:
+                muons = muons_dct[variation]
+                logger.info(f"Replacing nominal muons with variation {variation}.\n")
             elif variation in [*jets_dct]:
                 jets = jets_dct[variation]
             do_variation = variation  # We can also simplify this a bit but for now it works
@@ -386,6 +681,9 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
 
             electrons = original_events.Electron
             muons = original_events.Muon
+
+            PFMET = original_events.PFMET
+            PuppiMET = original_events.PuppiMET
 
             # photon preselection
             # photons, b_jets, leps = photon_preselections(self, photons, jets, electrons, muons, events, year=self.year[dataset_name][0])
@@ -466,14 +764,21 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
                     raise ValueError(f"Unknown data stream: {dataset_name}")
 
             b_jets = jets[jets.btagUParTAK4B > 0.1272]
+            bjets_loose = jets[jets.btagUParTAK4B>0.0246]
             at_least_one_bjets = awkward.num(b_jets) >= 1
+            at_least_one_bjets_loose = awkward.num(bjets_loose) >= 1
             at_least_two_photons = awkward.num(photons) >= 2
 
-            b_jets = jets[jets.btagUParTAK4B > 0.1272]
-            at_least_one_bjets = awkward.num(b_jets) >= 1
-            at_least_two_photons = awkward.num(photons) >= 2
+            mask_2photons = (lepton_channel_mask & at_least_two_photons & at_least_one_bjets_loose)
 
-            event_mask = lepton_channel_mask & at_least_one_bjets & at_least_two_photons
+            mask_all = (lepton_channel_mask & at_least_two_photons & at_least_one_bjets)
+
+            event_mask = mask_2photons
+
+            pass_all_selection = mask_all[event_mask]
+
+
+            # event_mask = lepton_channel_mask & at_least_one_bjets & at_least_two_photons
 
             # breakpoint()
 
@@ -481,17 +786,110 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
             electrons = electrons[event_mask]
             muons = muons[event_mask]
             b_jets = b_jets[event_mask]
+            PFMET = PFMET[event_mask]
+            PuppiMET = PuppiMET[event_mask]
             n_bjets = awkward.num(b_jets)
             events = original_events[event_mask]
+            jets = jets[event_mask]
             # events = events[event_mask]
+
+            selected_event_idx = event_idx[event_mask]
+
+            if self.data_kind == "mc" and (
+                "DYGto2LG4_24SummerRun3" in dataset_name
+                or "DYGto2LG50_24SummerRun3" in dataset_name
+            ):
+
+                DYG_mask = self.photon_from_DYG(photons, events.GenPart)
+
+                events = events[DYG_mask]
+                photons = photons[DYG_mask]
+                electrons = electrons[DYG_mask]
+                muons = muons[DYG_mask]
+                jets = jets[DYG_mask]
+                b_jets = b_jets[DYG_mask]
+                PFMET = PFMET[DYG_mask]
+                PuppiMET = PuppiMET[DYG_mask]
+
+                n_bjets = awkward.num(b_jets)
+                pass_all_selection = pass_all_selection[DYG_mask]
+                selected_event_idx = selected_event_idx[DYG_mask]
+
+
+            elif self.data_kind == "mc" and (
+                "DYto2Mu10_24SummerRun3" in dataset_name
+                or "DYto2Mu50_24SummerRun3" in dataset_name
+                or "DYto2E10_24SummerRun3" in dataset_name
+                or "DYto2E50_24SummerRun3" in dataset_name
+            ):
+
+                DYG_mask = self.photon_from_DYG(photons, events.GenPart)
+
+                non_DYG_mask = ~DYG_mask
+
+                events = events[non_DYG_mask]
+                photons = photons[non_DYG_mask]
+                electrons = electrons[non_DYG_mask]
+                muons = muons[non_DYG_mask]
+                jets = jets[non_DYG_mask]
+                b_jets = b_jets[non_DYG_mask]
+                PFMET = PFMET[non_DYG_mask]
+                PuppiMET = PuppiMET[non_DYG_mask]
+
+                n_bjets = awkward.num(b_jets)
+                pass_all_selection = pass_all_selection[non_DYG_mask]
+                selected_event_idx = selected_event_idx[non_DYG_mask]
+
+
+            if self.data_kind == "mc" and (
+                "WGtoLNuG_24SummerRun3" in dataset_name
+            ):
+
+                WG_mask = self.photon_from_WG(photons, events.GenPart)
+
+                events = events[WG_mask]
+                photons = photons[WG_mask]
+                electrons = electrons[WG_mask]
+                muons = muons[WG_mask]
+                jets = jets[WG_mask]
+                b_jets = b_jets[WG_mask]
+                PFMET = PFMET[WG_mask]
+                PuppiMET = PuppiMET[WG_mask]
+
+                n_bjets = awkward.num(b_jets)
+                pass_all_selection = pass_all_selection[WG_mask]
+                selected_event_idx = selected_event_idx[WG_mask]
+
+
+            elif self.data_kind == "mc" and (
+                "WtoENu0J_24SummerRun3" in dataset_name
+                or "WtoENu1J_24SummerRun3" in dataset_name
+                or "WtoENu2J_24SummerRun3" in dataset_name
+                or "WtoMuNu0J_24SummerRun3" in dataset_name
+                or "WtoMuNu1J_24SummerRun3" in dataset_name
+                or "WtoMuNu2J_24SummerRun3" in dataset_name
+            ):
+
+                WG_mask = self.photon_from_WG(photons, events.GenPart)
+
+                non_WG_mask = ~WG_mask
+
+                events = events[non_WG_mask]
+                photons = photons[non_WG_mask]
+                electrons = electrons[non_WG_mask]
+                muons = muons[non_WG_mask]
+                jets = jets[non_WG_mask]
+                b_jets = b_jets[non_WG_mask]
+                PFMET = PFMET[non_WG_mask]
+                PuppiMET = PuppiMET[non_WG_mask]
+
+                n_bjets = awkward.num(b_jets)
+                pass_all_selection = pass_all_selection[non_WG_mask]
+                selected_event_idx = selected_event_idx[non_WG_mask]
 
             photons = photons[awkward.argsort(photons.pt, ascending=False)]
 
             diphotons = build_diphoton_candidates(photons, self.min_pt_lead_photon)
-
-            selected_event_idx = event_idx[event_mask]
-
-            
 
             # Store b-Jets information             
             # b_jets = b_jets[awkward.argsort(b_jets.pt, ascending=False)]
@@ -625,6 +1023,15 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
             muon_mass = choose_jet(muons.mass, 0, -999.0)
             muon_charge = choose_jet(muons.charge, 0, -999.0)
 
+            PFMET_pt = PFMET.pt
+            PFMET_phi = PFMET.phi
+            PFMET_sumEt = PFMET.sumEt
+            PuppiMET_pt = PuppiMET.pt
+            PuppiMET_phi = PuppiMET.phi
+            PuppiMET_sumEt = PuppiMET.sumEt
+
+
+
             print("Length of diphoton array: ", len(diphotons))
             print("diphoton array: ", diphotons)
             print("Length of n_bjets array: ", len(n_bjets))
@@ -663,7 +1070,8 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
             )
 
             # ---------------- Jets ----------------
-            Njets = awkward.num(jets[event_mask])
+            # Njets = awkward.num(jets[event_mask])
+            Njets = awkward.num(jets)
 
             has2b = awkward.num(b_jets) >= 2
 
@@ -731,6 +1139,31 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
                 -999.0,
             )
 
+            met_Puppi = awkward.zip(
+                {
+                    "pt": PuppiMET.pt,
+                    "eta": awkward.zeros_like(PuppiMET.pt),
+                    "phi": PuppiMET.phi,
+                    "mass": awkward.zeros_like(PuppiMET.pt),
+                },
+                with_name="Momentum4D",
+            )
+
+            delphi_ggMET_Puppi = numpy.abs(gg.deltaphi(met_Puppi))
+
+        
+            met_PF = awkward.zip(
+                {
+                    "pt": PFMET.pt,
+                    "eta": awkward.zeros_like(PFMET.pt),
+                    "phi": PFMET.phi,
+                    "mass": awkward.zeros_like(PFMET.pt),
+                },
+                with_name="Momentum4D",
+            )
+
+            delphi_ggMET_PF = numpy.abs(gg.deltaphi(met_PF))
+
 
             diphotons["n_bJets"] = n_bjets
 
@@ -757,6 +1190,16 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
             diphotons["second_jet_probb"] = second_jet_probb
             diphotons["second_jet_probbb"] = second_jet_probbb
 
+            diphotons["PFMET_pt"] = PFMET_pt
+            diphotons["PFMET_phi"] = PFMET_phi
+            diphotons["PFMET_sumEt"] = PFMET_sumEt
+            diphotons["PuppiMET_pt"] = PuppiMET_pt
+            diphotons["PuppiMET_phi"] = PuppiMET_phi
+            diphotons["PuppiMET_sumEt"] = PuppiMET_sumEt
+
+            diphotons["delphi_ggMET_Puppi"] = delphi_ggMET_Puppi
+            diphotons["delphi_ggMET_PF"] = delphi_ggMET_PF
+
             diphotons["electron_pt"] = electron_pt
             diphotons["electron_eta"] = electron_eta
             diphotons["electron_phi"] = electron_phi
@@ -779,6 +1222,8 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
             diphotons["delphi_gg"]   = delphi_gg
             diphotons["delphi_bb"]   = delphi_bb
             diphotons["delphi_bbgg"] = delphi_bbgg
+
+            diphotons["pass_all_selection"] = pass_all_selection
 
             # --------------------------------------------------
             # Build feature matrix in EXACT training order
@@ -1031,11 +1476,11 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
                 diphotons["genWeight"] = events.genWeight
                 diphotons["dZ"] = events.GenVtx.z - events.PV.z
                 # Necessary for differential xsec measurements in final fits ("truth" variables)
-                diphotons["HTXS_Higgs_pt"] = events.HTXS.Higgs_pt
-                diphotons["HTXS_Higgs_y"] = events.HTXS.Higgs_y
-                diphotons["HTXS_njets30"] = events.HTXS.njets30  # Need to clarify if this variable is suitable, does it fulfill abs(eta_j) < 2.5? Probably not
+                # diphotons["HTXS_Higgs_pt"] = events.HTXS.Higgs_pt
+                # diphotons["HTXS_Higgs_y"] = events.HTXS.Higgs_y
+                # diphotons["HTXS_njets30"] = events.HTXS.njets30  # Need to clarify if this variable is suitable, does it fulfill abs(eta_j) < 2.5? Probably not
                 # Preparation for HTXS measurements later, start with stage 0 to disentangle VH into WH and ZH for final fits
-                diphotons["HTXS_stage_0"] = events.HTXS.stage_0
+                # diphotons["HTXS_stage_0"] = events.HTXS.stage_0
             # Fill zeros for data because there is no GenVtx for data, obviously
             else:
                 diphotons["dZ"] = awkward.zeros_like(events.PV.z)
@@ -1075,6 +1520,9 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
                             photons=events[f"diphotons_{do_variation}"][
                                 selection_mask
                             ],
+                            muons=muons[selection_mask],
+                            electrons=electrons[selection_mask],
+                            jets=jets[selection_mask],
                             weights=event_weights,
                             dataset_name=dataset_name,
                             year=self.year[dataset_name][0],
@@ -1128,6 +1576,9 @@ class My_first_processor_WH_Cat1_HDNA_presel(HggBaseProcessor):
                                     photons=events[f"diphotons_{do_variation}"][
                                         selection_mask
                                     ],
+                                    muons=muons[selection_mask],
+                                    electrons=electrons[selection_mask],
+                                    jets=jets[selection_mask],
                                     weights=event_weights,
                                     dataset_name=dataset_name,
                                     year=self.year[dataset_name][0],

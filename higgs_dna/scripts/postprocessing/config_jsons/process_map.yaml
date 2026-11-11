@@ -97,10 +97,19 @@ TTG1Jets-24SummerRun3:                 TTG1Jets
 TTto2L2Nu-24SummerRun3:                TTto2L2Nu
 TTtoLNu2Q-24SummerRun3:                TTtoLNu2Q
 WGtoLNuG-24SummerRun3:                 WGtoLNuG
+WtoENu0J-24SummerRun3:                 WtoENu0J
+WtoENu1J-24SummerRun3:                 WtoENu1J
+WtoENu2J-24SummerRun3:                 WtoENu2J
+WtoMuNu0J-24SummerRun3:                WtoMuNu0J
+WtoMuNu1J-24SummerRun3:                WtoMuNu1J
+WtoMuNu2J-24SummerRun3:                WtoMuNu2J
+DYGto2LG4-24SummerRun3:                DYGto2LG4
+DYGto2LG50-24SummerRun3:               DYGto2LG50
 DYto2Mu50-24SummerRun3:                DYto2Mu50
 DYto2E50-24SummerRun3:                 DYto2E50
 DYto2E10-24SummerRun3:                 DYto2E10
 DYto2Mu10-24SummerRun3:                DYto2Mu10
+
 
 
 Data:         data

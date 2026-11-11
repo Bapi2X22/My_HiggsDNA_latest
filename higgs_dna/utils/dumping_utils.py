@@ -138,6 +138,58 @@ def diphoton_ak_array(self, diphotons: ak.Array) -> ak.Array:
             output[field] = diphotons[field]
     return ak.Array(output)
 
+def diphoton_ak_array_new(self,
+    diphotons: ak.Array,
+    extra_fields: dict | None = None,
+) -> ak.Array:
+    """
+    Convert diphoton record to a flat awkward array.
+    extra_fields contains event-level branches that should be written
+    independently of whether a diphoton exists.
+    """
+
+    output = {}
+
+    # ---------------------------------------------------------
+    # Diphoton branches
+    # ---------------------------------------------------------
+    for field in ak.fields(diphotons):
+
+        prefix = self.prefixes.get(field, "")
+
+        if prefix:
+            for subfield in ak.fields(diphotons[field]):
+                if subfield == "__systematics__":
+                    continue
+
+                arr = diphotons[field][subfield]
+
+                if "float" in str(arr.type):
+                    arr = ak.fill_none(arr, -999.)
+                elif "int" in str(arr.type):
+                    arr = ak.fill_none(arr, -999)
+
+                output[f"{prefix}_{subfield}"] = arr
+
+        else:
+
+            arr = diphotons[field]
+
+            if "float" in str(arr.type):
+                arr = ak.fill_none(arr, -999.)
+            elif "int" in str(arr.type):
+                arr = ak.fill_none(arr, -999)
+
+            output[field] = arr
+
+    # ---------------------------------------------------------
+    # Event-level branches
+    # ---------------------------------------------------------
+    if extra_fields is not None:
+        output.update(extra_fields)
+
+    return ak.Array(output)
+
 
 def dump_ak_array(
     self,

@@ -13,6 +13,8 @@ from higgs_dna.scripts.postprocessing.remote.htcondor import htcondor_postproces
 from concurrent.futures import ThreadPoolExecutor
 import yaml
 
+from pathlib import Path
+
 # ---------------------- A few helping functions  ----------------------
 
 
@@ -353,6 +355,14 @@ def main():
         dest="custom_accumulator",
         help="If set, the script will process the custom accumulator from the parquet files.",
     )
+
+    parser.add_option(
+        "--dataset",
+        dest="dataset",
+        default=None,
+        help="Process only the specified dataset."
+    )
+
     (opt, args) = parser.parse_args()
 
     opt.output = os.path.realpath(opt.output) if opt.output else ""
@@ -403,12 +413,6 @@ def main():
             folder_for_dirlist = opt.input + "/merged"
         if opt.folder_structure != "":
             folder_for_dirlist = opt.folder_structure
-
-# Creating dirlist
-    os.system(
-        f"find {folder_for_dirlist} -mindepth 1 -maxdepth 1 -type d | grep -v '^.$' | grep -v .coffea | grep -vE '/[^/]*(merged|root)[^/]*$' |"
-        + "awk -F'/' '{print $NF}' > dirlist.txt"
-        )
     
 # the key of the var_dict entries is also used as a key for the related root tree branch
 # to be consistent with FinalFit naming scheme you shoud use SystNameUp and SystNameDown,
@@ -430,6 +434,64 @@ def main():
         with open(var_dict_loc, "r") as jf:
             var_dict = json.load(jf)
 
+    # input_dir = Path(folder_for_dirlist)
+
+    # # List first-level subdirectories
+    # subdirs = [d for d in input_dir.iterdir() if d.is_dir()]
+
+    # # Does this directory itself look like a HiggsDNA dataset?
+    # is_single_dataset = any((input_dir / v).is_dir() for v in var_dict.values())
+
+# # Creating dirlist
+#     os.system(
+#         f"find {folder_for_dirlist} -mindepth 1 -maxdepth 1 -type d | grep -v '^.$' | grep -v .coffea | grep -vE '/[^/]*(merged|root)[^/]*$' |"
+#         + "awk -F'/' '{print $NF}' > dirlist.txt"
+#         )
+
+    # if is_single_dataset:
+    #     logger.info(f"Detected single dataset input: {input_dir.name}")
+
+    #     with open("dirlist.txt", "w") as f:
+    #         f.write(input_dir.name + "\n")
+
+    #     # Make the rest of the script treat the parent as the input directory
+    #     opt.input = str(input_dir.parent)
+    #     folder_for_dirlist = opt.input
+    #     input_dir = Path(folder_for_dirlist)
+
+
+
+    # else:
+    #     os.system(
+    #         f"find {folder_for_dirlist} -mindepth 1 -maxdepth 1 -type d "
+    #         "| grep -v '^.$' "
+    #         "| grep -v .coffea "
+    #         "| grep -vE '/[^/]*(merged|root)[^/]*$' "
+    #         "| awk -F'/' '{print $NF}' > dirlist.txt"
+    #     )
+
+    if opt.dataset is not None:
+        logger.info(f"Processing only dataset: {opt.dataset}")
+
+        with open("dirlist.txt", "w") as f:
+            f.write(opt.dataset + "\n")
+
+    else:
+        # os.system(
+        #     f"find {folder_for_dirlist} -mindepth 1 -maxdepth 1 -type d "
+        #     "| grep -v '^.$' "
+        #     "| grep -v .coffea "
+        #     "| grep -vE '/[^/]*(merged|root)[^/]*$' "
+        #     "| awk -F'/' '{print $NF}' > dirlist.txt"
+        # )
+
+        os.system(
+            f"find {folder_for_dirlist} -mindepth 1 -maxdepth 1 -type d "
+            "| grep -v '^.$' "
+            "| grep -v .coffea "
+            "| grep -vE '/[^/]*(merged|root|CATS)[^/]*$' "
+            "| awk -F'/' '{print $NF}' > dirlist.txt"
+        )
 # Here we prepare to split the output into categories, in the dictionary are defined the cuts to be applyed by pyarrow.ParquetDataset
 # when reading the data, the variable obviously has to be in the dumped .parquet
 # This can be improved by passing the configuration via json loading
